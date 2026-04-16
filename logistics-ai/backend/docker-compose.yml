@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database Service
   db:
@@ -50,33 +48,54 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
       ALERT_CONFIDENCE_THRESHOLD: ${ALERT_CONFIDENCE_THRESHOLD:-75}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       # Hot reload for development (optional)
       - .:/app
     networks:
       - logistics-network
-    logging:
-      driver: loki
-      options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        loki-batch-size: "400"
     command: uvicorn app.main:create_app --host 0.0.0.0 --port 8000 --factory
 
   # Loki - Log aggregation service
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.8
     container_name: logistics-loki
     restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
+      - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
       - logistics-network
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/config.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Promtail - Docker log collector
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: logistics-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      loki:
+        condition: service_healthy
+    volumes:
+      - ../observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - logistics-network
 
   # Grafana - Visualization and dashboarding
   grafana:
@@ -90,8 +109,21 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      - loki
+      loki:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  # Redis - Background job broker / cache
+  redis:
+    image: redis:7-alpine
+    container_name: logistics-ai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
     networks:
       - logistics-network
 
