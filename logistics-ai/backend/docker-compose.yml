@@ -64,7 +64,7 @@ services:
 
   # Loki - Log aggregation service
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:2.9.8
     container_name: logistics-loki
     restart: unless-stopped
     ports:
@@ -75,16 +75,23 @@ services:
     networks:
       - logistics-network
     command: -config.file=/etc/loki/config.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # Promtail - Collects backend JSON logs and forwards them to Loki
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:2.9.8
     container_name: logistics-promtail
     restart: unless-stopped
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-      - backend
-      - loki
+      backend:
+        condition: service_started
+      loki:
+        condition: service_healthy
     volumes:
       - ../observability/promtail-config.yml:/etc/promtail/config.yml:ro
       - backend_logs:/var/log/logistics-ai:ro
@@ -106,7 +113,8 @@ services:
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      - loki
+      loki:
+        condition: service_healthy
     networks:
       - logistics-network
 
