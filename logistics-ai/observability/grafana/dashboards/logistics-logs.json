@@ -40,13 +40,22 @@
             "uid": "loki"
           },
           "editorMode": "code",
+<<<<<<< HEAD
           "expr": "sum by (log_level) (count_over_time({job=\"logistics-backend\"}[5m]))",
           "legendFormat": "{{log_level}}",
+=======
+          "expr": "sum by (container) (count_over_time({container=~\"logistics-ai-backend|logistics-ai-worker|logistics-backend\"}[5m]))",
+          "legendFormat": "{{container}}",
+>>>>>>> jeff
           "queryType": "range",
           "refId": "A"
         }
       ],
+<<<<<<< HEAD
       "title": "Requests by Log Level",
+=======
+      "title": "Container Log Volume",
+>>>>>>> jeff
       "type": "timeseries"
     },
     {
@@ -77,12 +86,20 @@
             "uid": "loki"
           },
           "editorMode": "code",
+<<<<<<< HEAD
           "expr": "{job=\"logistics-backend\"}",
+=======
+          "expr": "{container=~\"logistics-ai-backend|logistics-ai-worker|logistics-backend\"}",
+>>>>>>> jeff
           "queryType": "range",
           "refId": "A"
         }
       ],
+<<<<<<< HEAD
       "title": "Backend Structured Logs",
+=======
+      "title": "Docker Container Logs",
+>>>>>>> jeff
       "type": "logs"
     }
   ],
@@ -91,8 +108,13 @@
   "style": "dark",
   "tags": [
     "loki",
+<<<<<<< HEAD
     "logging",
     "logistics-ai"
+=======
+    "docker",
+    "logging"
+>>>>>>> jeff
   ],
   "templating": {
     "list": []
@@ -103,8 +125,13 @@
   },
   "timepicker": {},
   "timezone": "browser",
+<<<<<<< HEAD
   "title": "Logistics Backend Logs",
   "uid": "logistics-backend-logs",
+=======
+  "title": "Logistics Container Logs",
+  "uid": "logistics-container-logs",
+>>>>>>> jeff
   "version": 1,
   "weekStart": ""
 }

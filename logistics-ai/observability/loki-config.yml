@@ -34,8 +34,11 @@ storage_config:
   filesystem:
     directory: /loki/chunks
 
+<<<<<<< HEAD
 ruler:
   alertmanager_url: http://localhost:9093
 
+=======
+>>>>>>> jeff
 analytics:
   reporting_enabled: false

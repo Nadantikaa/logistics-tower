@@ -48,9 +48,21 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 # Background worker configuration
+<<<<<<< HEAD
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 USE_BACKGROUND_EVALUATION = os.getenv("USE_BACKGROUND_EVALUATION", "false").lower() == "true"
+=======
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_URL = os.getenv("REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+USE_BACKGROUND_EVALUATION = os.getenv("USE_BACKGROUND_EVALUATION", "false").lower() == "true"
+SHIPMENTS_CACHE_TTL_SECONDS = int(os.getenv("SHIPMENTS_CACHE_TTL_SECONDS", "30"))
+SUMMARY_CACHE_TTL_SECONDS = int(os.getenv("SUMMARY_CACHE_TTL_SECONDS", "30"))
+REFRESH_QUEUE_KEY = os.getenv("REFRESH_QUEUE_KEY", "queue:monitoring_refresh")
+>>>>>>> jeff
 
 # Alert Configuration
 ALERT_CONFIDENCE_THRESHOLD = int(os.getenv("ALERT_CONFIDENCE_THRESHOLD", "75"))

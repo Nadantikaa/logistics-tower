@@ -54,6 +54,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       # Hot reload for development (optional)
       - .:/app
@@ -65,11 +67,13 @@ services:
   # Loki - Log aggregation service
   loki:
     image: grafana/loki:2.9.8
+    image: grafana/loki:2.9.8
     container_name: logistics-loki
     restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
+      - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
@@ -110,6 +114,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
