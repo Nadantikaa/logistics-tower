@@ -5,7 +5,7 @@
   },
   {
     "location": "Mumbai Port",
-    "tags": ["Labor shortage"]
+    "tags": ["Labor shortage", "Heavy vessel queue", "Simulated delay"]
   },
   {
     "location": "Visakhapatnam Port",
@@ -16,4 +16,3 @@
     "tags": ["Carrier backlog"]
   }
 ]
-

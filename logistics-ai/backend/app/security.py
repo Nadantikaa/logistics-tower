@@ -1,107 +1,3 @@
-<<<<<<< HEAD
-"""
-Security utilities for password hashing, JWT token generation, and verification.
-"""
-
-import bcrypt
-import jwt
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-
-from app.config import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
-
-
-def hash_password(password: str) -> str:
-    """
-    Hash a password using bcrypt.
-    
-    Args:
-        password: Plain text password
-        
-    Returns:
-        Hashed password (safe to store in database)
-    """
-    salt = bcrypt.gensalt(rounds=12)
-    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed.decode("utf-8")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verify a plain text password against a hashed password.
-    
-    Args:
-        plain_password: Password provided by user
-        hashed_password: Hash stored in database
-        
-    Returns:
-        True if password matches, False otherwise
-    """
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
-
-
-def create_access_token(user_id: int, username: str, role: str) -> str:
-    """
-    Create a JWT access token.
-    
-    Args:
-        user_id: User ID from database
-        username: Username
-        role: User role (admin, operator, viewer)
-        
-    Returns:
-        JWT token string
-    """
-    now = datetime.now(timezone.utc)
-    expiration = now + timedelta(hours=JWT_EXPIRATION_HOURS)
-    
-    payload = {
-        "sub": str(user_id),
-        "username": username,
-        "role": role,
-        "iat": now,
-        "exp": expiration,
-    }
-    
-    token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-    return token
-
-
-def verify_token(token: str) -> Optional[dict]:
-    """
-    Verify and decode a JWT token.
-    
-    Args:
-        token: JWT token string
-        
-    Returns:
-        Decoded payload if valid, None otherwise
-    """
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-
-def decode_token(token: str) -> Optional[dict]:
-    """
-    Decode a JWT token without verification (for debugging only).
-    
-    Args:
-        token: JWT token string
-        
-    Returns:
-        Decoded payload if valid, None otherwise
-    """
-    try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], options={"verify_signature": False})
-        return payload
-    except Exception:
-        return None
-=======
 import base64
 import hashlib
 import hmac
@@ -205,7 +101,7 @@ def _parse_google_response(payload: dict) -> dict:
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID is not configured.")
 
-    if GOOGLE_CLIENT_ID and audience != GOOGLE_CLIENT_ID:
+    if audience != GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=401, detail="Google identity token audience mismatch.")
 
     if issuer not in GOOGLE_ALLOWED_ISSUERS:
@@ -603,7 +499,6 @@ def require_auth(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing access token.")
 
     payload = _decode_access_token(token)
-
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid JWT payload.")
@@ -647,4 +542,3 @@ def clear_auth_cookies(response: Response, refresh_cookie: str | None) -> None:
     revoke_refresh_token(refresh_cookie)
     _clear_cookie(response, ACCESS_COOKIE_NAME)
     _clear_cookie(response, REFRESH_COOKIE_NAME)
->>>>>>> ecd9105 (login page ,google login , pii)
