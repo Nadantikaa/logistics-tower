@@ -2,8 +2,11 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
+import smtplib
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from typing import Any
 
 import httpx
@@ -21,6 +24,14 @@ from app.config import (
     GOOGLE_TOKENINFO_URL,
     JWT_ALGORITHM,
     JWT_SECRET_KEY,
+    MFA_FROM_EMAIL,
+    MFA_MAX_ATTEMPTS,
+    MFA_OTP_TTL_MINUTES,
+    MFA_SMTP_HOST,
+    MFA_SMTP_PASSWORD,
+    MFA_SMTP_PORT,
+    MFA_SMTP_USERNAME,
+    MFA_SMTP_USE_TLS,
     PII_ENCRYPTION_KEY,
     REFRESH_TOKEN_TTL_DAYS,
 )
@@ -29,6 +40,7 @@ from app.db import get_db
 GOOGLE_ALLOWED_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 ACCESS_COOKIE_NAME = "logistics_ai_access"
 REFRESH_COOKIE_NAME = "logistics_ai_refresh"
+logger = logging.getLogger(__name__)
 
 
 def _derive_key() -> bytes:
@@ -57,6 +69,10 @@ def hash_email_lookup(email: str) -> str:
 
 def hash_refresh_token(token: str) -> str:
     return hmac.new(JWT_SECRET_KEY.encode("utf-8"), token.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def hash_otp_code(code: str) -> str:
+    return hmac.new(JWT_SECRET_KEY.encode("utf-8"), code.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def hash_password(password: str) -> str:
@@ -133,6 +149,10 @@ def _safe_user_payload(user: dict) -> dict:
         "role": user["role"],
         "display_name": "Admin Operator" if user["role"] == "admin" else "Control Tower User",
     }
+
+
+def _generate_otp_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def create_access_token(user: dict) -> tuple[str, str]:
@@ -276,6 +296,102 @@ def issue_auth_cookies(response: Response, user: dict) -> dict[str, Any]:
     }
 
 
+def _get_user_email(user_id: int) -> str:
+    with get_db() as connection:
+        row = connection.execute(
+            """
+            SELECT email_encrypted
+            FROM users
+            WHERE id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found for MFA challenge.")
+    return decrypt_pii(row["email_encrypted"])
+
+
+def _send_mfa_email(email: str, code: str) -> None:
+    subject = "Your Logistics AI verification code"
+    body = (
+        "Use the verification code below to finish signing in to Logistics AI.\n\n"
+        f"Code: {code}\n\n"
+        f"This code expires in {MFA_OTP_TTL_MINUTES} minutes."
+    )
+
+    if not MFA_SMTP_HOST:
+        logger.warning("MFA SMTP is not configured. OTP for user email delivery is logged locally: %s", code)
+        return
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = MFA_FROM_EMAIL
+    message["To"] = email
+    message.set_content(body)
+
+    try:
+        with smtplib.SMTP(MFA_SMTP_HOST, MFA_SMTP_PORT, timeout=10) as smtp:
+            if MFA_SMTP_USE_TLS:
+                smtp.starttls()
+            if MFA_SMTP_USERNAME:
+                smtp.login(MFA_SMTP_USERNAME, MFA_SMTP_PASSWORD)
+            smtp.send_message(message)
+    except smtplib.SMTPException as exc:
+        raise HTTPException(status_code=502, detail="Unable to send the MFA verification email.") from exc
+
+
+def _create_mfa_challenge(*, user: dict, email: str, purpose: str) -> dict[str, Any]:
+    code = _generate_otp_code()
+    challenge_id = secrets.token_urlsafe(24)
+    now = utc_now()
+    expires_at = now + timedelta(minutes=MFA_OTP_TTL_MINUTES)
+
+    with get_db() as connection:
+        connection.execute(
+            """
+            UPDATE mfa_challenges
+            SET revoked_at = ?
+            WHERE user_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
+            """,
+            (now.isoformat(), user["id"]),
+        )
+        connection.execute(
+            """
+            INSERT INTO mfa_challenges (
+                challenge_id,
+                user_id,
+                otp_hash,
+                purpose,
+                created_at,
+                expires_at,
+                consumed_at,
+                revoked_at,
+                attempts
+            )
+            VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0)
+            """,
+            (
+                challenge_id,
+                user["id"],
+                hash_otp_code(code),
+                purpose,
+                now.isoformat(),
+                expires_at.isoformat(),
+            ),
+        )
+        connection.commit()
+
+    _send_mfa_email(email, code)
+    return {
+        "authenticated": False,
+        "mfa_required": True,
+        "challenge_id": challenge_id,
+        "expires_at": expires_at.isoformat(),
+        "channel": "email",
+    }
+
+
 def get_user_by_id(user_id: int):
     with get_db() as connection:
         row = connection.execute(
@@ -292,6 +408,79 @@ def get_user_by_id(user_id: int):
     if not row:
         return None
     return _serialize_user_identity(row)
+
+
+def issue_mfa_challenge(*, user: dict, email: str, purpose: str) -> dict[str, Any]:
+    return _create_mfa_challenge(user=user, email=email, purpose=purpose)
+
+
+def resend_mfa_challenge(challenge_id: str) -> dict[str, Any]:
+    with get_db() as connection:
+        row = connection.execute(
+            """
+            SELECT user_id, purpose, revoked_at, consumed_at
+            FROM mfa_challenges
+            WHERE challenge_id = ?
+            """,
+            (challenge_id,),
+        ).fetchone()
+
+    if not row or row["revoked_at"] is not None or row["consumed_at"] is not None:
+        raise HTTPException(status_code=404, detail="MFA challenge not found.")
+
+    user = get_user_by_id(row["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User no longer exists.")
+    return _create_mfa_challenge(user=user, email=_get_user_email(row["user_id"]), purpose=row["purpose"])
+
+
+def verify_mfa_challenge(response: Response, challenge_id: str, otp_code: str) -> dict[str, Any]:
+    with get_db() as connection:
+        row = connection.execute(
+            """
+            SELECT user_id, otp_hash, expires_at, consumed_at, revoked_at, attempts
+            FROM mfa_challenges
+            WHERE challenge_id = ?
+            """,
+            (challenge_id,),
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="MFA challenge not found.")
+        if row["revoked_at"] is not None or row["consumed_at"] is not None:
+            raise HTTPException(status_code=401, detail="MFA challenge is no longer active.")
+        if datetime.fromisoformat(row["expires_at"]) <= utc_now():
+            connection.execute(
+                "UPDATE mfa_challenges SET revoked_at = ? WHERE challenge_id = ?",
+                (utc_now().isoformat(), challenge_id),
+            )
+            connection.commit()
+            raise HTTPException(status_code=401, detail="MFA code expired. Request a new code.")
+        if row["attempts"] >= MFA_MAX_ATTEMPTS:
+            connection.execute(
+                "UPDATE mfa_challenges SET revoked_at = ? WHERE challenge_id = ?",
+                (utc_now().isoformat(), challenge_id),
+            )
+            connection.commit()
+            raise HTTPException(status_code=429, detail="Too many OTP attempts. Request a new code.")
+        if not secrets.compare_digest(row["otp_hash"], hash_otp_code(otp_code)):
+            connection.execute(
+                "UPDATE mfa_challenges SET attempts = attempts + 1 WHERE challenge_id = ?",
+                (challenge_id,),
+            )
+            connection.commit()
+            raise HTTPException(status_code=401, detail="Invalid verification code.")
+
+        connection.execute(
+            "UPDATE mfa_challenges SET consumed_at = ? WHERE challenge_id = ?",
+            (utc_now().isoformat(), challenge_id),
+        )
+        connection.commit()
+
+    user = get_user_by_id(row["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User no longer exists.")
+    return issue_auth_cookies(response, user)
 
 
 async def verify_google_id_token(id_token: str) -> dict:
@@ -507,6 +696,18 @@ def require_auth(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists.")
     return user
+
+
+def require_role(*allowed_roles: str):
+    def dependency(user: dict = Depends(require_auth)) -> dict:
+        if user["role"] not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to perform this action.",
+            )
+        return user
+
+    return dependency
 
 
 def safe_user_response(user: dict) -> dict:

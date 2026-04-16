@@ -159,6 +159,27 @@ select {
   cursor: wait;
 }
 
+.mfa-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.auth-secondary-button {
+  flex: 1;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.auth-secondary-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .login-error {
   margin: 14px 0 0;
   color: #fca5a5;
@@ -199,6 +220,14 @@ select {
   color: #f8fafc;
 }
 
+.role-label {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
 .logout-button {
   border: 0;
   border-radius: 999px;
@@ -206,4 +235,14 @@ select {
   background: #f8fafc;
   color: #0f172a;
   cursor: pointer;
+}
+
+.permission-note {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.38);
+  color: #cbd5e1;
+  line-height: 1.5;
 }

@@ -74,6 +74,15 @@ REFRESH_TOKEN_TTL_DAYS = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
+MFA_ENABLED = os.getenv("MFA_ENABLED", "true").lower() == "true"
+MFA_OTP_TTL_MINUTES = int(os.getenv("MFA_OTP_TTL_MINUTES", "10"))
+MFA_MAX_ATTEMPTS = int(os.getenv("MFA_MAX_ATTEMPTS", "5"))
+MFA_SMTP_HOST = os.getenv("MFA_SMTP_HOST", "")
+MFA_SMTP_PORT = int(os.getenv("MFA_SMTP_PORT", "587"))
+MFA_SMTP_USERNAME = os.getenv("MFA_SMTP_USERNAME", "")
+MFA_SMTP_PASSWORD = os.getenv("MFA_SMTP_PASSWORD", "")
+MFA_SMTP_USE_TLS = os.getenv("MFA_SMTP_USE_TLS", "true").lower() == "true"
+MFA_FROM_EMAIL = os.getenv("MFA_FROM_EMAIL", "no-reply@logistics-ai.local")
 ADMIN_EMAILS = {
     email.strip().lower()
     for email in os.getenv("ADMIN_EMAILS", "").split(",")

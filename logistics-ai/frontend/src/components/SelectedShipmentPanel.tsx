@@ -7,9 +7,10 @@ interface SelectedShipmentPanelProps {
   shipment: Shipment;
   shipmentAlert: AlertItem | null;
   shipments: Shipment[];
+  canManage: boolean;
 }
 
-export function SelectedShipmentPanel({ shipment, shipmentAlert, shipments }: SelectedShipmentPanelProps) {
+export function SelectedShipmentPanel({ shipment, shipmentAlert, shipments, canManage }: SelectedShipmentPanelProps) {
   return (
     <section className="selected-shipment">
       <div className="panel selected-summary">
@@ -65,7 +66,7 @@ export function SelectedShipmentPanel({ shipment, shipmentAlert, shipments }: Se
       </div>
 
       <ActionCard shipment={shipment} shipmentAlert={shipmentAlert} shipments={shipments} />
-      <SimulationPanel shipment={shipment} />
+      <SimulationPanel shipment={shipment} canManage={canManage} />
     </section>
   );
 }

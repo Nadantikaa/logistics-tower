@@ -52,6 +52,23 @@ def init_database() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mfa_challenges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                challenge_id TEXT NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                otp_hash TEXT NOT NULL,
+                purpose TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                consumed_at TEXT,
+                revoked_at TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
         user_columns = {
             row[1]
             for row in connection.execute("PRAGMA table_info(users)").fetchall()

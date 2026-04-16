@@ -41,12 +41,14 @@ function loadGoogleScript(): Promise<void> {
 }
 
 export function LoginScreen() {
-  const { loginWithGoogle, loginWithPassword, signupWithPassword } = useAuth();
+  const { challenge, clearChallenge, loginWithGoogle, loginWithPassword, resendOtp, signupWithPassword, verifyOtp } =
+    useAuth();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleStatus, setGoogleStatus] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -54,7 +56,7 @@ export function LoginScreen() {
   useEffect(() => {
     let active = true;
 
-    if (mode !== "login") {
+    if (mode !== "login" || challenge) {
       return () => {
         active = false;
       };
@@ -112,7 +114,22 @@ export function LoginScreen() {
     return () => {
       active = false;
     };
-  }, [loginWithGoogle, mode]);
+  }, [challenge, loginWithGoogle, mode]);
+
+  const handleOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await verifyOtp(otpCode);
+      setOtpCode("");
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : "OTP verification failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -135,77 +152,131 @@ export function LoginScreen() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <h1>{mode === "signup" ? "Create account" : "Sign in"}</h1>
-        <p className="login-copy">Log in to continue to the control tower.</p>
-        <div className="auth-toggle">
-          <button
-            type="button"
-            className={mode === "login" ? "auth-toggle-button active" : "auth-toggle-button"}
-            onClick={() => setMode("login")}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            className={mode === "signup" ? "auth-toggle-button active" : "auth-toggle-button"}
-            onClick={() => setMode("signup")}
-          >
-            Create account
-          </button>
-        </div>
+        {challenge ? (
+          <>
+            <h1>Verify email</h1>
+            <p className="login-copy">Enter the 6-digit code sent to your email to finish signing in.</p>
+            <form className="auth-form" onSubmit={handleOtpSubmit}>
+              <label>
+                Verification code
+                <input
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                />
+              </label>
+              <button type="submit" className="auth-submit-button" disabled={submitting}>
+                {submitting ? "Verifying..." : "Verify code"}
+              </button>
+            </form>
+            <div className="mfa-actions">
+              <button
+                type="button"
+                className="auth-secondary-button"
+                disabled={submitting}
+                onClick={() => {
+                  setSubmitting(true);
+                  setError(null);
+                  void resendOtp()
+                    .catch((authError) => {
+                      setError(authError instanceof Error ? authError.message : "Unable to resend the code.");
+                    })
+                    .finally(() => setSubmitting(false));
+                }}
+              >
+                Resend code
+              </button>
+              <button
+                type="button"
+                className="auth-secondary-button"
+                disabled={submitting}
+                onClick={() => {
+                  clearChallenge();
+                  setOtpCode("");
+                  setError(null);
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1>{mode === "signup" ? "Create account" : "Sign in"}</h1>
+            <p className="login-copy">Log in to continue to the control tower.</p>
+            <div className="auth-toggle">
+              <button
+                type="button"
+                className={mode === "login" ? "auth-toggle-button active" : "auth-toggle-button"}
+                onClick={() => setMode("login")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={mode === "signup" ? "auth-toggle-button active" : "auth-toggle-button"}
+                onClick={() => setMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
 
-        {mode === "login" ? (
-          <div className="social-login-block">
-            <div
-              ref={googleButtonRef}
-              className="google-signin-slot"
-            />
-            {googleStatus === "loading" ? <p className="google-help-text">Loading Google Sign-In...</p> : null}
-            {googleStatus === "unavailable" ? (
-              <p className="google-help-text">
-                Google Sign-In is unavailable. Check `frontend/.env`, your client ID, and restart Vite.
-              </p>
+            {mode === "login" ? (
+              <div className="social-login-block">
+                <div
+                  ref={googleButtonRef}
+                  className="google-signin-slot"
+                />
+                {googleStatus === "loading" ? <p className="google-help-text">Loading Google Sign-In...</p> : null}
+                {googleStatus === "unavailable" ? (
+                  <p className="google-help-text">
+                    Google Sign-In is unavailable. Check `frontend/.env`, your client ID, and restart Vite.
+                  </p>
+                ) : null}
+                <div className="login-divider">or continue with email</div>
+              </div>
             ) : null}
-            <div className="login-divider">or continue with email</div>
-          </div>
-        ) : null}
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === "signup" ? (
-            <label>
-              Full name
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Vaishnavi Peru"
-                autoComplete="name"
-              />
-            </label>
-          ) : null}
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 8 characters"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            />
-          </label>
-          <button type="submit" className="auth-submit-button" disabled={submitting}>
-            {submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Sign in"}
-          </button>
-        </form>
+            <form className="auth-form" onSubmit={handleSubmit}>
+              {mode === "signup" ? (
+                <label>
+                  Full name
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Vaishnavi Peru"
+                    autoComplete="name"
+                  />
+                </label>
+              ) : null}
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                />
+              </label>
+              <button type="submit" className="auth-submit-button" disabled={submitting}>
+                {submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Sign in"}
+              </button>
+            </form>
+          </>
+        )}
         {error ? <p className="login-error">{error}</p> : null}
       </section>
     </main>

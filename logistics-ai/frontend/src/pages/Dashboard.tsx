@@ -10,6 +10,7 @@ import { useDashboardData } from "../hooks/useDashboardData";
 
 export function Dashboard() {
   const { session, logout } = useAuth();
+  const canManageActions = session?.user.role === "admin";
   const { shipments, alerts, summary, decisionLog, lastUpdated, loading, error, topShipmentId } = useDashboardData();
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
 
@@ -59,6 +60,7 @@ export function Dashboard() {
             <div>
               <span>Signed in</span>
               <strong>{session?.user.display_name ?? "Control Tower User"}</strong>
+              <small className="role-label">{session?.user.role === "admin" ? "Admin" : "General user"}</small>
             </div>
           </div>
           <button type="button" className="logout-button" onClick={() => void logout()}>
@@ -94,7 +96,12 @@ export function Dashboard() {
         </div>
 
         <div className="main-column">
-          <SelectedShipmentPanel shipment={selectedShipment} shipmentAlert={selectedShipmentAlert} shipments={shipments} />
+          <SelectedShipmentPanel
+            shipment={selectedShipment}
+            shipmentAlert={selectedShipmentAlert}
+            shipments={shipments}
+            canManage={canManageActions}
+          />
           <DecisionLog entries={decisionLog} />
         </div>
       </div>

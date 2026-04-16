@@ -6,11 +6,12 @@ import { WhyDrawer } from "./WhyDrawer";
 
 interface ShipmentCardProps {
   shipment: Shipment;
+  shipments: Shipment[];
   selected: boolean;
   onSelect: (shipmentId: string) => void;
 }
 
-export function ShipmentCard({ shipment, selected, onSelect }: ShipmentCardProps) {
+export function ShipmentCard({ shipment, shipments, selected, onSelect }: ShipmentCardProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -39,7 +40,7 @@ export function ShipmentCard({ shipment, selected, onSelect }: ShipmentCardProps
           Why?
         </button>
       </div>
-      {open ? <WhyDrawer shipment={shipment} /> : null}
+      {open ? <WhyDrawer shipment={shipment} shipments={shipments} /> : null}
     </article>
   );
 }
