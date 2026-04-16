@@ -64,16 +64,24 @@ services:
       - logistics-network
     command: uvicorn app.main:create_app --host 0.0.0.0 --port 8000 --factory --no-access-log
 
+  # Redis - Cache / queue broker
+  redis:
+    image: redis:7-alpine
+    container_name: logistics-ai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - logistics-network
+
   # Loki - Log aggregation service
   loki:
-    image: grafana/loki:2.9.8
     image: grafana/loki:2.9.8
     container_name: logistics-loki
     restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
-      - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
@@ -114,8 +122,6 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:

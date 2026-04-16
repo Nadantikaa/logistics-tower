@@ -19,11 +19,6 @@ logger = logging.getLogger(__name__)
 
 @router.get("/monitoring/summary")
 def monitoring_summary():
-<<<<<<< HEAD
-    shipments = get_shipments_snapshot()
-    logger.info("monitoring.summary_generated", extra={"shipment_count": len(shipments)})
-    return get_summary(shipments)
-=======
     cached_summary = get_cached_summary()
     if cached_summary is not None:
         return cached_summary
@@ -35,15 +30,18 @@ def monitoring_summary():
 
     summary = get_summary(shipments)
     cache_summary(summary)
+    logger.info("monitoring.summary_generated", extra={"shipment_count": len(shipments)})
     return summary
->>>>>>> jeff
 
 
 @router.post("/refresh")
 def refresh_monitoring():
     invalidate_monitoring_cache()
     shipments = get_shipments_snapshot()
-<<<<<<< HEAD
+    cache_shipments(shipments)
+    summary = get_summary(shipments)
+    cache_summary(summary)
+    queue_result = enqueue_refresh_job()
     logger.info(
         "monitoring.refreshed",
         extra={
@@ -51,12 +49,6 @@ def refresh_monitoring():
             "shipment_id": shipments[0].shipment_id if shipments else None,
         },
     )
-=======
-    cache_shipments(shipments)
-    summary = get_summary(shipments)
-    cache_summary(summary)
-    queue_result = enqueue_refresh_job()
->>>>>>> jeff
     return {
         "status": "refreshed",
         "shipments": len(shipments),

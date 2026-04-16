@@ -3,19 +3,12 @@ services:
     build:
       context: ./backend
     container_name: logistics-ai-backend
-<<<<<<< HEAD
-    env_file:
-      - path: ./backend/.env
-        required: false
-    environment:
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_FILE_PATH: ${LOG_FILE_PATH:-/app/logs/backend.log}
-      LOG_SERVICE_NAME: ${LOG_SERVICE_NAME:-logistics-ai-backend}
-=======
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
->>>>>>> jeff
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE_PATH: ${LOG_FILE_PATH:-/app/logs/backend.log}
+      LOG_SERVICE_NAME: ${LOG_SERVICE_NAME:-logistics-ai-backend}
     ports:
       - "8000:8000"
     volumes:
@@ -36,44 +29,20 @@ services:
     build:
       context: ./backend
     container_name: logistics-ai-worker
-    env_file:
-      - ./backend/.env
     command: celery -A app.worker.celery_app worker --concurrency=2 --loglevel=info
     volumes:
       - ./backend/data:/app/data
     depends_on:
       - redis
     restart: unless-stopped
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:alpine
-    container_name: logistics-ai-redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
-  worker:
-    build:
-      context: ./backend
-    container_name: logistics-ai-worker
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
-    command: celery -A app.worker.celery_app worker --concurrency=2 --loglevel=info
-    volumes:
-      - ./backend/data:/app/data
-    depends_on:
-      - redis
-    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
     container_name: logistics-ai-frontend
-    env_file:
-      - ./frontend/.env
     ports:
       - "5173:5173"
     depends_on:
@@ -101,21 +70,13 @@ services:
     container_name: logistics-ai-promtail
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-<<<<<<< HEAD
       backend:
         condition: service_started
-=======
->>>>>>> jeff
       loki:
         condition: service_healthy
     volumes:
       - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
-<<<<<<< HEAD
       - backend_logs:/var/log/logistics-ai:ro
-=======
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
->>>>>>> jeff
     restart: unless-stopped
 
   grafana:
@@ -136,9 +97,6 @@ services:
     restart: unless-stopped
 
 volumes:
-<<<<<<< HEAD
   backend_logs:
-=======
->>>>>>> jeff
   loki_data:
   grafana_data:

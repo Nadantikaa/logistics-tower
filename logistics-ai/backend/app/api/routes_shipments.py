@@ -12,17 +12,13 @@ logger = logging.getLogger(__name__)
 
 @router.get("/shipments")
 def list_shipments():
-<<<<<<< HEAD
-    shipments = get_shipments_snapshot()
-    logger.info("shipments.listed", extra={"shipment_count": len(shipments)})
-=======
     cached_shipments = get_cached_shipments()
     if cached_shipments is not None:
         return cached_shipments
 
     shipments = get_shipments_snapshot()
     cache_shipments(shipments)
->>>>>>> jeff
+    logger.info("shipments.listed", extra={"shipment_count": len(shipments)})
     return shipments
 
 
