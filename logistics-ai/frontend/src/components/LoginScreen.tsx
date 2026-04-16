@@ -20,6 +20,7 @@ declare global {
 
 const GOOGLE_SCRIPT_ID = "google-identity-services";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 
 function loadGoogleScript(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -41,26 +42,36 @@ function loadGoogleScript(): Promise<void> {
 }
 
 export function LoginScreen() {
-  const { loginWithGoogle, loginWithPassword, signupWithPassword } = useAuth();
+  const { challenge, clearChallenge, loginWithGoogle, loginWithPassword, resendOtp, signupWithPassword, verifyOtp } = useAuth();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [googleStatus, setGoogleStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [googleStatus, setGoogleStatus] = useState<"disabled" | "loading" | "ready" | "unavailable">(
+    GOOGLE_AUTH_ENABLED ? "loading" : "disabled",
+  );
 
   useEffect(() => {
     let active = true;
 
-    if (mode !== "login") {
+    if (mode !== "login" || challenge) {
       return () => {
         active = false;
       };
     }
 
     setGoogleStatus("loading");
+
+    if (!GOOGLE_AUTH_ENABLED) {
+      setGoogleStatus("disabled");
+      return () => {
+        active = false;
+      };
+    }
 
     if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("your-google-client-id")) {
       setGoogleStatus("unavailable");
@@ -112,7 +123,7 @@ export function LoginScreen() {
     return () => {
       active = false;
     };
-  }, [loginWithGoogle, mode]);
+  }, [challenge, loginWithGoogle, mode]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -120,7 +131,9 @@ export function LoginScreen() {
     setError(null);
 
     try {
-      if (mode === "signup") {
+      if (challenge) {
+        await verifyOtp(otpCode);
+      } else if (mode === "signup") {
         await signupWithPassword(name, email, password);
       } else {
         await loginWithPassword(email, password);
@@ -154,7 +167,7 @@ export function LoginScreen() {
           </button>
         </div>
 
-        {mode === "login" ? (
+        {mode === "login" && GOOGLE_AUTH_ENABLED && !challenge ? (
           <div className="social-login-block">
             <div
               ref={googleButtonRef}
@@ -171,6 +184,61 @@ export function LoginScreen() {
         ) : null}
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          {challenge ? (
+            <>
+              <p className="otp-copy">
+                Enter the 6-digit code sent to <strong>{challenge.email_hint}</strong>.
+              </p>
+              <label>
+                Verification code
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  autoComplete="one-time-code"
+                />
+              </label>
+              <button type="submit" className="auth-submit-button" disabled={submitting}>
+                {submitting ? "Verifying..." : "Verify code"}
+              </button>
+              <div className="otp-actions">
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    setSubmitting(true);
+                    setError(null);
+                    void resendOtp()
+                      .catch((authError) => {
+                        setError(authError instanceof Error ? authError.message : "Unable to resend the code.");
+                      })
+                      .finally(() => setSubmitting(false));
+                  }}
+                  disabled={submitting}
+                >
+                  Resend code
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    clearChallenge();
+                    setOtpCode("");
+                    setError(null);
+                  }}
+                  disabled={submitting}
+                >
+                  Back
+                </button>
+              </div>
+              {challenge.dev_otp_code ? (
+                <p className="google-help-text">Dev OTP: <strong>{challenge.dev_otp_code}</strong></p>
+              ) : null}
+            </>
+          ) : (
+            <>
           {mode === "signup" ? (
             <label>
               Full name
@@ -205,6 +273,8 @@ export function LoginScreen() {
           <button type="submit" className="auth-submit-button" disabled={submitting}>
             {submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Sign in"}
           </button>
+            </>
+          )}
         </form>
         {error ? <p className="login-error">{error}</p> : null}
       </section>

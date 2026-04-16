@@ -52,6 +52,23 @@ def init_database() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mfa_challenges (
+                challenge_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                purpose TEXT NOT NULL,
+                email_encrypted TEXT NOT NULL,
+                otp_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                verified_at TEXT,
+                consumed_at TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
         user_columns = {
             row[1]
             for row in connection.execute("PRAGMA table_info(users)").fetchall()
@@ -66,6 +83,14 @@ def init_database() -> None:
         }
         if "sessions" in existing_tables and "refresh_tokens" not in existing_tables:
             connection.execute("DROP TABLE sessions")
+        challenge_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(mfa_challenges)").fetchall()
+        }
+        if "verified_at" not in challenge_columns:
+            connection.execute("ALTER TABLE mfa_challenges ADD COLUMN verified_at TEXT")
+        if "consumed_at" not in challenge_columns:
+            connection.execute("ALTER TABLE mfa_challenges ADD COLUMN consumed_at TEXT")
         connection.commit()
 
 

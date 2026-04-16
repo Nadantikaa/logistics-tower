@@ -94,7 +94,11 @@ export function Dashboard() {
         </div>
 
         <div className="main-column">
-          <SelectedShipmentPanel shipment={selectedShipment} shipmentAlert={selectedShipmentAlert} shipments={shipments} />
+          <SelectedShipmentPanel
+            shipment={selectedShipment}
+            shipmentAlert={selectedShipmentAlert}
+            shipments={shipments}
+          />
           <DecisionLog entries={decisionLog} />
         </div>
       </div>

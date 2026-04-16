@@ -164,6 +164,31 @@ select {
   color: #fca5a5;
 }
 
+.otp-copy {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.otp-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #93c5fd;
+  cursor: pointer;
+  padding: 0;
+}
+
+.text-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .hero-aside {
   display: flex;
   align-items: center;

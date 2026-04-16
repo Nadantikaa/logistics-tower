@@ -21,6 +21,7 @@ export function ShipmentList({ shipments, selectedShipmentId, onSelect }: Shipme
           <ShipmentCard
             key={shipment.shipment_id}
             shipment={shipment}
+            shipments={shipments}
             selected={shipment.shipment_id === selectedShipmentId}
             onSelect={onSelect}
           />

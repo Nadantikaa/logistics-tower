@@ -22,6 +22,17 @@ def _load_env_file() -> None:
 
 _load_env_file()
 
+
+def _resolve_local_path(value: str, *, base_dir: Path) -> str:
+    if "://" in value:
+        return value
+
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return str(candidate)
+
+    return str((base_dir / candidate).resolve())
+
 # Database Configuration
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
@@ -63,7 +74,10 @@ ALERT_CONFIDENCE_THRESHOLD = int(os.getenv("ALERT_CONFIDENCE_THRESHOLD", "75"))
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-only-jwt-secret-change-me")
 PII_ENCRYPTION_KEY = os.getenv("PII_ENCRYPTION_KEY", "dev-only-pii-secret-change-me")
-DATABASE_URL = os.getenv("DATABASE_URL", str(DATA_DIR / "security.db"))
+DATABASE_URL = _resolve_local_path(
+    os.getenv("DATABASE_URL", str(DATA_DIR / "security.db")),
+    base_dir=BASE_DIR,
+)
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")
@@ -80,6 +94,15 @@ REFRESH_TOKEN_TTL_DAYS = int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "7"))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
+MFA_ENABLED = os.getenv("MFA_ENABLED", "false").lower() == "true"
+MFA_OTP_TTL_MINUTES = int(os.getenv("MFA_OTP_TTL_MINUTES", "10"))
+MFA_MAX_ATTEMPTS = int(os.getenv("MFA_MAX_ATTEMPTS", "5"))
+MFA_SMTP_HOST = os.getenv("MFA_SMTP_HOST", "")
+MFA_SMTP_PORT = int(os.getenv("MFA_SMTP_PORT", "587"))
+MFA_SMTP_USERNAME = os.getenv("MFA_SMTP_USERNAME", "")
+MFA_SMTP_PASSWORD = os.getenv("MFA_SMTP_PASSWORD", "")
+MFA_SMTP_USE_TLS = os.getenv("MFA_SMTP_USE_TLS", "true").lower() == "true"
+MFA_FROM_EMAIL = os.getenv("MFA_FROM_EMAIL", "no-reply@logistics-ai.local")
 ADMIN_EMAILS = {
     email.strip().lower()
     for email in os.getenv("ADMIN_EMAILS", "").split(",")

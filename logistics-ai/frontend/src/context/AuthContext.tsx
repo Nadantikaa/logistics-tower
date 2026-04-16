@@ -7,7 +7,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import type { AuthSession } from "../types/auth";
+import type { AuthResult, AuthSession, MfaChallenge } from "../types/auth";
 
 function resolveApiBase() {
   const fallback = `${window.location.protocol}//${window.location.hostname}:8000/api`;
@@ -24,9 +24,13 @@ const API_BASE = resolveApiBase();
 
 interface AuthContextValue {
   session: AuthSession | null;
+  challenge: MfaChallenge | null;
   loginWithPassword: (email: string, password: string) => Promise<void>;
   signupWithPassword: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
+  verifyOtp: (otpCode: string) => Promise<void>;
+  resendOtp: () => Promise<void>;
+  clearChallenge: () => void;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
@@ -34,16 +38,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function parseAuthResponse(response: Response, fallbackMessage: string): Promise<AuthSession> {
+async function parseAuthResponse(response: Response, fallbackMessage: string): Promise<AuthResult> {
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? fallbackMessage);
   }
-  return (await response.json()) as AuthSession;
+  return (await response.json()) as AuthResult;
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,15 +65,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         if (response.ok) {
-          const user = (await response.json()) as AuthSession["user"];
-          setSession({
-            authenticated: true,
-            expires_at: "",
-            refresh_expires_at: "",
-            user,
-          });
+          const payload = (await response.json()) as Partial<AuthSession>;
+          if (payload.authenticated && payload.user) {
+            setSession({
+              authenticated: true,
+              expires_at: payload.expires_at ?? "",
+              refresh_expires_at: payload.refresh_expires_at ?? "",
+              user: payload.user,
+            });
+            setChallenge(null);
+          } else {
+            setSession(null);
+            setChallenge(null);
+          }
         } else {
           setSession(null);
+          setChallenge(null);
         }
       } finally {
         if (active) {
@@ -92,8 +104,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       body: JSON.stringify({ email, password }),
     });
-    const nextSession = await parseAuthResponse(response, "Email sign-in failed.");
-    setSession(nextSession);
+    const result = await parseAuthResponse(response, "Email sign-in failed.");
+    if ("mfa_required" in result) {
+      setChallenge(result);
+      setSession(null);
+      return;
+    }
+    setSession(result);
+    setChallenge(null);
   };
 
   const signupWithPassword = async (name: string, email: string, password: string) => {
@@ -105,8 +123,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       body: JSON.stringify({ name, email, password }),
     });
-    const nextSession = await parseAuthResponse(response, "Account creation failed.");
-    setSession(nextSession);
+    const result = await parseAuthResponse(response, "Account creation failed.");
+    if ("mfa_required" in result) {
+      setChallenge(result);
+      setSession(null);
+      return;
+    }
+    setSession(result);
+    setChallenge(null);
   };
 
   const loginWithGoogle = async (credential: string) => {
@@ -118,9 +142,60 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       body: JSON.stringify({ credential }),
     });
-    const nextSession = await parseAuthResponse(response, "Google sign-in failed.");
-    setSession(nextSession);
+    const result = await parseAuthResponse(response, "Google sign-in failed.");
+    if ("mfa_required" in result) {
+      setChallenge(result);
+      setSession(null);
+      return;
+    }
+    setSession(result);
+    setChallenge(null);
   };
+
+  const verifyOtp = async (otpCode: string) => {
+    if (!challenge) {
+      throw new Error("No verification challenge is active.");
+    }
+
+    const response = await fetch(`${API_BASE}/auth/mfa/verify`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ challenge_id: challenge.challenge_id, otp_code: otpCode }),
+    });
+    const result = await parseAuthResponse(response, "OTP verification failed.");
+    if ("mfa_required" in result) {
+      setChallenge(result);
+      setSession(null);
+      return;
+    }
+    setSession(result);
+    setChallenge(null);
+  };
+
+  const resendOtp = async () => {
+    if (!challenge) {
+      throw new Error("No verification challenge is active.");
+    }
+
+    const response = await fetch(`${API_BASE}/auth/mfa/resend`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ challenge_id: challenge.challenge_id }),
+    });
+    const result = await parseAuthResponse(response, "Unable to resend the verification code.");
+    if (!("mfa_required" in result)) {
+      throw new Error("Unexpected response while resending the verification code.");
+    }
+    setChallenge(result);
+  };
+
+  const clearChallenge = () => setChallenge(null);
 
   const logout = async () => {
     await fetch(`${API_BASE}/auth/logout`, {
@@ -128,19 +203,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
       credentials: "include",
     }).catch(() => undefined);
     setSession(null);
+    setChallenge(null);
   };
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
+      challenge,
       loginWithPassword,
       signupWithPassword,
       loginWithGoogle,
+      verifyOtp,
+      resendOtp,
+      clearChallenge,
       logout,
       isAuthenticated: Boolean(session?.authenticated),
       loading,
     }),
-    [loading, session],
+    [challenge, loading, session],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
