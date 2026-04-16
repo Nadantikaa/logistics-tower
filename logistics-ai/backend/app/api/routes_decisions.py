@@ -1,64 +1,28 @@
-import logging
-<<<<<<< HEAD
-from fastapi import APIRouter, HTTPException, status
-=======
+from fastapi import APIRouter, HTTPException
 
-from fastapi import APIRouter, Depends, HTTPException, status
->>>>>>> 34f90ad (multi factor auth)
-from fastapi.responses import JSONResponse
-
-from app.config import USE_BACKGROUND_EVALUATION
 from app.models.simulation import SimulationRequest
-from app.security import require_role
 from app.services.monitoring_service import get_shipments_snapshot
 from app.services.simulation_service import simulate_action, simulate_impact
 
 
 router = APIRouter(tags=["decisions"])
-logger = logging.getLogger(__name__)
-
-
-def _load_background_task():
-    try:
-        from app.worker import evaluate_shipment_task
-    except ModuleNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Background worker dependencies are not installed on this backend instance.",
-        ) from exc
-    return evaluate_shipment_task
 
 
 @router.post("/decisions/evaluate/{shipment_id}")
-def evaluate_decision(shipment_id: str, _admin=Depends(require_role("admin"))):
+def evaluate_decision(shipment_id: str):
     """
     Action Optimizer endpoint. Returns static decision with pre-computed ripple effects.
     Does NOT recompute on dropdown or refresh - provides stable baseline.
     """
-    if USE_BACKGROUND_EVALUATION:
-        logger.info("Triggering background evaluation for shipment_id=%s", shipment_id)
-        evaluate_shipment_task = _load_background_task()
-        task = evaluate_shipment_task.delay(shipment_id)
-        return JSONResponse(
-            status_code=status.HTTP_202_ACCEPTED,
-            content={
-                "message": "Background evaluation triggered",
-                "task_id": task.id,
-                "shipment_id": shipment_id,
-            },
-        )
-
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
-            logger.info("decision.evaluated", extra={"shipment_id": shipment_id})
             return shipment.decision
-    logger.warning("decision.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")
 
 
 @router.post("/simulate/impact/{shipment_id}")
-def simulate_shipment_impact(shipment_id: str, payload: SimulationRequest, _admin=Depends(require_role("admin"))):
+def simulate_shipment_impact(shipment_id: str, payload: SimulationRequest):
     """
     What-if Analysis endpoint. Dynamically recomputes impact when user changes action.
     Returns full impact metrics and ripple effects for the selected action.
@@ -67,25 +31,15 @@ def simulate_shipment_impact(shipment_id: str, payload: SimulationRequest, _admi
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
-            logger.info(
-                "shipment.impact_simulated",
-                extra={"shipment_id": shipment_id, "action": payload.action},
-            )
             return simulate_impact(shipment, payload.action, all_shipments=shipments)
-    logger.warning("impact.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")
 
 
 @router.post("/simulate/{shipment_id}")
-def simulate_shipment_action(shipment_id: str, payload: SimulationRequest, _admin=Depends(require_role("admin"))):
+def simulate_shipment_action(shipment_id: str, payload: SimulationRequest):
     """Legacy simulation endpoint."""
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
-            logger.info(
-                "shipment.action_simulated",
-                extra={"shipment_id": shipment_id, "action": payload.action},
-            )
             return simulate_action(shipment, payload.action, all_shipments=shipments)
-    logger.warning("simulation.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")
