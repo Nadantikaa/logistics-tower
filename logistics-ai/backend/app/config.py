@@ -47,6 +47,11 @@ OPENWEATHER_UNITS = "metric"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
+# Background worker configuration
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+USE_BACKGROUND_EVALUATION = os.getenv("USE_BACKGROUND_EVALUATION", "false").lower() == "true"
+
 # Alert Configuration
 ALERT_CONFIDENCE_THRESHOLD = int(os.getenv("ALERT_CONFIDENCE_THRESHOLD", "75"))
 

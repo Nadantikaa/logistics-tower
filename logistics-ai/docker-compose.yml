@@ -16,6 +16,28 @@ services:
       - ./backend/data:/app/data
       - backend_logs:/app/logs
     restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: logistics-ai-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+    container_name: logistics-ai-worker
+    env_file:
+      - ./backend/.env
+    command: celery -A app.worker.celery_app worker --concurrency=2 --loglevel=info
+    volumes:
+      - ./backend/data:/app/data
+    depends_on:
+      - redis
+    restart: unless-stopped
 
   frontend:
     build:
