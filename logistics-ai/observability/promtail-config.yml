@@ -9,7 +9,6 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-<<<<<<< HEAD
   - job_name: logistics-backend
     static_configs:
       - targets:
@@ -19,30 +18,6 @@ scrape_configs:
           service: logistics-ai-backend
           __path__: /var/log/logistics-ai/backend.log
     pipeline_stages:
-=======
-  - job_name: docker-containers
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    relabel_configs:
-      - source_labels: ['__meta_docker_container_name']
-        regex: '/(logistics-ai-backend|logistics-ai-worker|logistics-backend)'
-        action: keep
-      - source_labels: ['__meta_docker_container_name']
-        target_label: container
-        regex: '/(.*)'
-        replacement: '$1'
-      - source_labels: ['__meta_docker_container_log_stream']
-        target_label: stream
-      - source_labels: ['__meta_docker_container_name']
-        target_label: job
-        regex: '/(.*)'
-        replacement: '$1'
-      - replacement: /var/lib/docker/containers/*/*-json.log
-        target_label: __path__
-    pipeline_stages:
-      - docker: {}
->>>>>>> jeff
       - json:
           expressions:
             timestamp: timestamp
@@ -53,12 +28,9 @@ scrape_configs:
             status_code: status_code
             logger: logger
             request_id: request_id
-<<<<<<< HEAD
       - timestamp:
           source: timestamp
           format: RFC3339
-=======
->>>>>>> jeff
       - labels:
           log_level:
           endpoint:
