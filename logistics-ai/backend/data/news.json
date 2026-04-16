@@ -1,0 +1,19 @@
+[
+  {
+    "location": "Chennai Port",
+    "tags": ["Customs slowdown", "Heavy vessel queue", "Regional disruption"]
+  },
+  {
+    "location": "Mumbai Port",
+    "tags": ["Labor shortage"]
+  },
+  {
+    "location": "Visakhapatnam Port",
+    "tags": []
+  },
+  {
+    "location": "Kolkata Port",
+    "tags": ["Carrier backlog"]
+  }
+]
+

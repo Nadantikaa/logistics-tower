@@ -1,0 +1,37 @@
+:root {
+  color-scheme: light;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  --color-primary: #0b1f3a;
+  --color-background: #0f172a;
+  --color-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-card-soft: #f8fafc;
+  --color-card-elevated: #f8fafc;
+  --color-chip: #e2e8f0;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-danger: #dc2626;
+  background:
+    radial-gradient(circle at top left, rgba(30, 41, 59, 0.42), transparent 24%),
+    radial-gradient(circle at top right, rgba(51, 65, 85, 0.24), transparent 32%),
+    linear-gradient(180deg, #0f172a 0%, #101a2e 58%, #0b1324 100%);
+  color: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+button,
+select {
+  font: inherit;
+}

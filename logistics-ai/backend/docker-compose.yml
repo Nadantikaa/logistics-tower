@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: logistics-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_NAME:-logistics_db}
+      MYSQL_USER: ${DB_USER:-logistics_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-logistics_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      # Persist database data even if container is removed
+      - db_data:/var/lib/mysql
+      # Initialize database schema on first startup
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    networks:
+      - logistics-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logistics-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Database connection variables
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-logistics_user}
+      DB_PASSWORD: ${DB_PASSWORD:-logistics_password}
+      DB_NAME: ${DB_NAME:-logistics_db}
+      # API Keys and other config
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      OPENWEATHER_CITY: ${OPENWEATHER_CITY:-Chennai}
+      OPENWEATHER_COUNTRY: ${OPENWEATHER_COUNTRY:-IN}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
+      ALERT_CONFIDENCE_THRESHOLD: ${ALERT_CONFIDENCE_THRESHOLD:-75}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Hot reload for development (optional)
+      - .:/app
+    networks:
+      - logistics-network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://loki:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+    command: uvicorn app.main:create_app --host 0.0.0.0 --port 8000 --factory
+
+  # Loki - Log aggregation service
+  loki:
+    image: grafana/loki:latest
+    container_name: logistics-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+    networks:
+      - logistics-network
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Grafana - Visualization and dashboarding
+  grafana:
+    image: grafana/grafana:latest
+    container_name: logistics-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - logistics-network
+
+volumes:
+  db_data:
+    driver: local
+  loki_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  logistics-network:
+    driver: bridge

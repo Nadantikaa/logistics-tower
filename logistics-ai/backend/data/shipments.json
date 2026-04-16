@@ -1,0 +1,67 @@
+[
+  {
+    "shipment_id": "SHP-001",
+    "origin": "Singapore",
+    "destination": "Chennai Port",
+    "current_location": "Chennai Port",
+    "status": "Delayed",
+    "priority_base": 68,
+    "is_critical": true,
+    "route_type": "Sea",
+    "baseline_eta_hours": 8,
+    "alternate_carrier_available": true,
+    "dependent_shipments": ["SHP-003", "SHP-004"],
+    "shared_resource": "Chennai Port",
+    "execution_status": "EXECUTED",
+    "predicted_delay_hours": 4
+  },
+  {
+    "shipment_id": "SHP-002",
+    "origin": "Dubai",
+    "destination": "Mumbai Port",
+    "current_location": "Mumbai Port",
+    "status": "In Transit",
+    "priority_base": 42,
+    "is_critical": false,
+    "route_type": "Sea",
+    "baseline_eta_hours": 10,
+    "alternate_carrier_available": true,
+    "dependent_shipments": [],
+    "shared_resource": "Mumbai Port",
+    "execution_status": "PENDING",
+    "predicted_delay_hours": 0
+  },
+  {
+    "shipment_id": "SHP-003",
+    "origin": "Colombo",
+    "destination": "Visakhapatnam Port",
+    "current_location": "Visakhapatnam Port",
+    "status": "In Transit",
+    "priority_base": 35,
+    "is_critical": false,
+    "route_type": "Sea",
+    "baseline_eta_hours": 14,
+    "alternate_carrier_available": false,
+    "dependent_shipments": [],
+    "shared_resource": "Chennai Port",
+    "execution_status": "PENDING",
+    "predicted_delay_hours": 2
+  },
+  {
+    "shipment_id": "SHP-004",
+    "origin": "Jakarta",
+    "destination": "Kolkata Port",
+    "current_location": "Kolkata Port",
+    "status": "At Port",
+    "priority_base": 39,
+    "is_critical": false,
+    "route_type": "Sea",
+    "baseline_eta_hours": 12,
+    "alternate_carrier_available": true,
+    "dependent_shipments": [],
+    "shared_resource": "Chennai Port",
+    "execution_status": "PENDING",
+    "predicted_delay_hours": 1
+  }
+]
+
