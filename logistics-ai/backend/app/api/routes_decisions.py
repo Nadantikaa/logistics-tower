@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from app.models.simulation import SimulationRequest
@@ -6,6 +8,7 @@ from app.services.simulation_service import simulate_action, simulate_impact
 
 
 router = APIRouter(tags=["decisions"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/decisions/evaluate/{shipment_id}")
@@ -17,7 +20,9 @@ def evaluate_decision(shipment_id: str):
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
+            logger.info("decision.evaluated", extra={"shipment_id": shipment_id})
             return shipment.decision
+    logger.warning("decision.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")
 
 
@@ -31,7 +36,12 @@ def simulate_shipment_impact(shipment_id: str, payload: SimulationRequest):
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
+            logger.info(
+                "shipment.impact_simulated",
+                extra={"shipment_id": shipment_id, "action": payload.action},
+            )
             return simulate_impact(shipment, payload.action, all_shipments=shipments)
+    logger.warning("impact.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")
 
 
@@ -41,5 +51,10 @@ def simulate_shipment_action(shipment_id: str, payload: SimulationRequest):
     shipments = get_shipments_snapshot()
     for shipment in shipments:
         if shipment.shipment_id == shipment_id:
+            logger.info(
+                "shipment.action_simulated",
+                extra={"shipment_id": shipment_id, "action": payload.action},
+            )
             return simulate_action(shipment, payload.action, all_shipments=shipments)
+    logger.warning("simulation.shipment_not_found", extra={"shipment_id": shipment_id})
     raise HTTPException(status_code=404, detail="Shipment not found")

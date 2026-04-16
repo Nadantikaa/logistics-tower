@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database Service
   db:
@@ -50,20 +48,19 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.1-8b-instant}
       ALERT_CONFIDENCE_THRESHOLD: ${ALERT_CONFIDENCE_THRESHOLD:-75}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE_PATH: ${LOG_FILE_PATH:-/app/logs/backend.log}
+      LOG_SERVICE_NAME: ${LOG_SERVICE_NAME:-logistics-ai-backend}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       # Hot reload for development (optional)
       - .:/app
+      - backend_logs:/app/logs
     networks:
       - logistics-network
-    logging:
-      driver: loki
-      options:
-        loki-url: "http://loki:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-    command: uvicorn app.main:create_app --host 0.0.0.0 --port 8000 --factory
+    command: uvicorn app.main:create_app --host 0.0.0.0 --port 8000 --factory --no-access-log
 
   # Loki - Log aggregation service
   loki:
@@ -73,10 +70,26 @@ services:
     ports:
       - "3100:3100"
     volumes:
+      - ../observability/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
       - logistics-network
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/config.yml
+
+  # Promtail - Collects backend JSON logs and forwards them to Loki
+  promtail:
+    image: grafana/promtail:latest
+    container_name: logistics-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - backend
+      - loki
+    volumes:
+      - ../observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - backend_logs:/var/log/logistics-ai:ro
+    networks:
+      - logistics-network
 
   # Grafana - Visualization and dashboarding
   grafana:
@@ -90,6 +103,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - loki
     networks:
@@ -97,6 +112,8 @@ services:
 
 volumes:
   db_data:
+    driver: local
+  backend_logs:
     driver: local
   loki_data:
     driver: local

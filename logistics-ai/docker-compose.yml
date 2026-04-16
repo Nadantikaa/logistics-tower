@@ -1,16 +1,20 @@
-version: "3.9"
-
 services:
   backend:
     build:
       context: ./backend
     container_name: logistics-ai-backend
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE_PATH: ${LOG_FILE_PATH:-/app/logs/backend.log}
+      LOG_SERVICE_NAME: ${LOG_SERVICE_NAME:-logistics-ai-backend}
     ports:
       - "8000:8000"
     volumes:
       - ./backend/data:/app/data
+      - backend_logs:/app/logs
     restart: unless-stopped
 
   frontend:
@@ -24,3 +28,47 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: logistics-ai-loki
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: logistics-ai-promtail
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - backend
+      - loki
+    volumes:
+      - ./observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - backend_logs:/var/log/logistics-ai:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: logistics-ai-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+
+volumes:
+  backend_logs:
+  loki_data:
+  grafana_data:

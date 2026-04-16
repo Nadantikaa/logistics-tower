@@ -74,3 +74,6 @@ ADMIN_EMAILS = {
     for email in os.getenv("ADMIN_EMAILS", "").split(",")
     if email.strip()
 }
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", str(BASE_DIR / "logs" / "backend.log"))
+LOG_SERVICE_NAME = os.getenv("LOG_SERVICE_NAME", "logistics-ai-backend")
