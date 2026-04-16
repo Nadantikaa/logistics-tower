@@ -5,9 +5,11 @@ import { LiveAlerts } from "../components/LiveAlerts";
 import { MapPanel } from "../components/MapPanel";
 import { SelectedShipmentPanel } from "../components/SelectedShipmentPanel";
 import { ShipmentList } from "../components/ShipmentList";
+import { useAuth } from "../context/AuthContext";
 import { useDashboardData } from "../hooks/useDashboardData";
 
 export function Dashboard() {
+  const { session, logout } = useAuth();
   const { shipments, alerts, summary, decisionLog, lastUpdated, loading, error, topShipmentId } = useDashboardData();
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
 
@@ -51,6 +53,17 @@ export function Dashboard() {
           <p className="eyebrow">Logistics AI Control Tower</p>
           <h1>Act before delays happen.</h1>
           <p>{summary?.critical_summary}</p>
+        </div>
+        <div className="hero-aside">
+          <div className="user-chip">
+            <div>
+              <span>Signed in</span>
+              <strong>{session?.user.display_name ?? "Control Tower User"}</strong>
+            </div>
+          </div>
+          <button type="button" className="logout-button" onClick={() => void logout()}>
+            Log out
+          </button>
         </div>
         <div className="hero-stats">
           <div>

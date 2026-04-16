@@ -2,6 +2,7 @@ fastapi==0.135.3
 uvicorn==0.44.0
 pydantic==2.13.0
 httpx>=0.27,<1.0
+<<<<<<< HEAD
 pymysql==1.1.0
 sqlalchemy==2.0.23
 bcrypt==4.1.1
@@ -10,3 +11,7 @@ cryptography==41.0.7
 python-dotenv==1.0.0
 email-validator==2.1.0
 python-logging-loki
+=======
+cryptography>=43,<46
+PyJWT>=2.9,<3
+>>>>>>> ecd9105 (login page ,google login , pii)

@@ -35,3 +35,175 @@ button,
 select {
   font: inherit;
 }
+
+#root {
+  min-height: 100vh;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.login-card {
+  width: min(100%, 420px);
+  padding: 32px;
+  border: 1px solid rgba(226, 232, 240, 0.12);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 20px 60px rgba(2, 6, 23, 0.34);
+}
+
+.login-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.9rem;
+}
+
+.login-copy {
+  margin: 0 0 20px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.auth-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px;
+  margin: 0 0 18px;
+  border-radius: 14px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.auth-toggle-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #cbd5e1;
+  background: transparent;
+  cursor: pointer;
+}
+
+.auth-toggle-button.active {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.social-login-block {
+  margin-bottom: 18px;
+}
+
+.google-signin-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.google-help-text {
+  margin: 10px 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.login-divider {
+  margin: 14px 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 8px;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+}
+
+.auth-form input::placeholder {
+  color: #64748b;
+}
+
+.auth-submit-button {
+  margin-top: 4px;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-submit-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.login-error {
+  margin: 14px 0 0;
+  color: #fca5a5;
+}
+
+.hero-aside {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.user-chip img {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.user-chip span {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.user-chip strong {
+  display: block;
+  color: #f8fafc;
+}
+
+.logout-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+}

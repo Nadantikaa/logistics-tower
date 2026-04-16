@@ -1,15 +1,21 @@
+<<<<<<< HEAD
 import logging
 import logging.config
 import json
 import time
 from fastapi import FastAPI, Request
+=======
+from fastapi import Depends, FastAPI
+>>>>>>> ecd9105 (login page ,google login , pii)
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.api.routes_auth import router as auth_router
 from app.api.routes_alerts import router as alerts_router
 from app.api.routes_decisions import router as decisions_router
 from app.api.routes_monitoring import router as monitoring_router
 from app.api.routes_shipments import router as shipments_router
+<<<<<<< HEAD
 from app.api.routes_auth import router as auth_router
 import logging
 from logging_loki import LokiHandler
@@ -134,9 +140,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 }
             )
             raise
+=======
+from app.config import ALLOWED_ORIGINS
+from app.db import init_database
+from app.security import require_auth
+>>>>>>> ecd9105 (login page ,google login , pii)
 
 
 def create_app() -> FastAPI:
+    init_database()
     app = FastAPI(
         title="Logistics AI Control Tower",
         version="0.1.0",
@@ -148,10 +160,10 @@ def create_app() -> FastAPI:
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=ALLOWED_ORIGINS or ["http://127.0.0.1:5173"],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
     @app.get("/health")
@@ -159,6 +171,7 @@ def create_app() -> FastAPI:
         logger.debug("Health check endpoint called")
         return {"status": "ok"}
 
+<<<<<<< HEAD
     # Authentication routes (no /api prefix for auth)
     logger.info("Including authentication routes")
     app.include_router(auth_router)
@@ -171,8 +184,14 @@ def create_app() -> FastAPI:
     app.include_router(decisions_router, prefix="/api")
     
     logger.info("Backend initialization complete")
+=======
+    app.include_router(auth_router, prefix="/api")
+    app.include_router(shipments_router, prefix="/api", dependencies=[Depends(require_auth)])
+    app.include_router(monitoring_router, prefix="/api", dependencies=[Depends(require_auth)])
+    app.include_router(alerts_router, prefix="/api", dependencies=[Depends(require_auth)])
+    app.include_router(decisions_router, prefix="/api", dependencies=[Depends(require_auth)])
+>>>>>>> ecd9105 (login page ,google login , pii)
     return app
 
 
 app = create_app()
-

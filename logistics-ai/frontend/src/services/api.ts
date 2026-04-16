@@ -8,10 +8,22 @@ import type {
 import type { ActionType } from "../types/shipment";
 import type { SimulationResult } from "../types/simulation";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
+function resolveApiBase() {
+  const fallback = `${window.location.protocol}//${window.location.hostname}:8000/api`;
+  const configured = import.meta.env.VITE_API_BASE;
+
+  if (!configured) {
+    return fallback;
+  }
+
+  return configured.replace("127.0.0.1", window.location.hostname).replace("localhost", window.location.hostname);
+}
+
+const API_BASE = resolveApiBase();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -20,6 +32,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      window.location.reload();
+    }
     throw new Error(`Request failed: ${response.status}`);
   }
 
